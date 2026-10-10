@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RoadHazard Reporter</title>
+
+  <!-- Leaflet Map CSS from Official CDN -->
+  <link 
+    rel="stylesheet" 
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
+  <!-- Custom Dark Theme Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Navigation & Header -->
+  <header class="app-header">
+    <div class="header-content">
+      <div class="brand">
+        <span class="brand-icon">⚠️</span>
+        <div class="brand-text">
+          <h1 class="brand-title">RoadHazard Reporter</h1>
+          <p class="brand-tagline">Report and track road hazards in real time to keep everyone safe.</p>
+        </div>
+      </div>
+      
+      <!-- Quick Info / Status Bar -->
+      <div class="header-actions">
+        <div class="hazard-counter" id="hazardCounter">
+          <span class="counter-label">Active Hazards:</span>
+          <span class="counter-badge" id="counterNumber">0</span>
+        </div>
+        <div class="hint-pill">
+          💡 Click anywhere on the map to report a hazard
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Map Container -->
+  <main class="map-wrapper">
+    <!-- Map Element (Leaflet renders here) -->
+    <div id="map"></div>
+
+    <!-- Floating Map Controls -->
+    <div class="map-controls">
+      <button id="locateBtn" class="btn-locate" title="Find my current location">
+        <span class="locate-icon">🎯</span>
+        <span class="locate-text">Use My Location</span>
+      </button>
+    </div>
+
+    <!-- Toast / Notification Alert Box for friendly messages -->
+    <div id="notificationToast" class="notification-toast hidden">
+      <span id="toastIcon" class="toast-icon">ℹ️</span>
+      <span id="toastMessage" class="toast-message">Message text</span>
+      <button id="toastCloseBtn" class="toast-close" aria-label="Dismiss">&times;</button>
+    </div>
+  </main>
+
+  <!-- Modal Dialog: Report a Road Hazard -->
+  <div id="reportModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 class="modal-title">Report a Road Hazard</h2>
+        <button id="modalCloseBtn" class="btn-close" aria-label="Close modal">&times;</button>
+      </div>
+
+      <form id="hazardForm" class="modal-body">
+        <div class="form-group">
+          <label for="hazardType">Hazard Type *</label>
+          <select id="hazardType" required>
+            <option value="pothole">🕳️ Pothole / Road Damage</option>
+            <option value="waterlogging">🌊 Waterlogging / Flooding</option>
+            <option value="accident">💥 Accident / Crash Site</option>
+            <option value="broken_signal">🚦 Broken Traffic Signal</option>
+            <option value="debris">🚧 Road Debris / Obstruction</option>
+            <option value="other">⚠️ Other Danger</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="hazardSeverity">Severity Level</label>
+          <select id="hazardSeverity">
+            <option value="low">🟡 Low - Passable with caution</option>
+            <option value="medium" selected>🟠 Medium - Significant slowdown</option>
+            <option value="high">🔴 High - Dangerous / Road blocked</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="hazardDescription">Description / Landmark</label>
+          <textarea 
+            id="hazardDescription" 
+            rows="3" 
+            placeholder="e.g. Deep pothole in the middle lane near metro pillar 142..."
+          ></textarea>
+        </div>
+
+        <div class="coordinates-preview">
+          <span>Location: </span>
+          <code id="coordsDisplay">0.0000, 0.0000</code>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="modalCancelBtn" class="btn-secondary">Cancel</button>
+          <button type="submit" class="btn-primary">Submit Report</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Leaflet Map JavaScript from Official CDN -->
+  <script 
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <!-- Application Logic (Normal Script Tag, no ES modules) -->
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,645 @@
+/* =========================================================
+   ROUTING & HAZARD STYLES - DARK THEME WITH ORANGE/RED ACCENTS
+   ========================================================= */
+
+:root {
+  /* Dark Theme Palette */
+  --bg-main: #0d1117;
+  --bg-card: #161b22;
+  --bg-card-hover: #1f242c;
+  --border-subtle: #30363d;
+  --border-bright: #484f58;
+
+  /* Typography */
+  --text-primary: #f0f6fc;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+
+  /* Accent Colors (Road Work Orange & Warning Red) */
+  --accent-orange: #ff6b35;
+  --accent-orange-hover: #ff8255;
+  --accent-red: #ef4444;
+  --accent-red-hover: #dc2626;
+  --accent-glow: rgba(255, 107, 53, 0.35);
+
+  /* Hazard Categorical Colors */
+  --hazard-pothole: #f59e0b;
+  --hazard-water: #06b6d4;
+  --hazard-accident: #ef4444;
+  --hazard-signal: #eab308;
+  --hazard-other: #f97316;
+
+  /* Fonts */
+  --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Global Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: var(--font-stack);
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+.app-header {
+  background-color: var(--bg-card);
+  border-bottom: 2px solid var(--accent-orange);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  padding: 12px 20px;
+  flex-shrink: 0;
+}
+
+.header-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-icon {
+  font-size: 2rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px var(--accent-glow));
+}
+
+.brand-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.brand-tagline {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hazard-counter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(255, 107, 53, 0.12);
+  border: 1px solid rgba(255, 107, 53, 0.35);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+}
+
+.counter-label {
+  color: var(--text-secondary);
+}
+
+.counter-badge {
+  background: var(--accent-orange);
+  color: #fff;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+}
+
+.hint-pill {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px dashed var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+
+/* =========================================================
+   MAP AREA (FILLS REST OF PAGE)
+   ========================================================= */
+.map-wrapper {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  background-color: #1a1e24; /* Fallback map color */
+}
+
+/* Floating Controls on the Map */
+.map-controls {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+}
+
+.btn-locate {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border: 1.5px solid var(--accent-orange);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 10px var(--accent-glow);
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-locate:hover {
+  background-color: var(--accent-orange);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
+}
+
+.btn-locate:active {
+  transform: translateY(1px);
+}
+
+.btn-locate.loading {
+  opacity: 0.75;
+  cursor: wait;
+}
+
+.locate-icon {
+  font-size: 1.1rem;
+}
+
+/* =========================================================
+   TOAST / FRIENDLY NOTIFICATION ALERT
+   ========================================================= */
+.notification-toast {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--accent-orange);
+  color: var(--text-primary);
+  padding: 12px 20px;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  font-size: 0.9rem;
+  max-width: 90%;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.notification-toast.toast-warning {
+  border-color: var(--accent-orange);
+}
+
+.notification-toast.toast-error {
+  border-color: var(--accent-red);
+}
+
+.notification-toast.toast-success {
+  border-color: #10b981;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.toast-close:hover {
+  color: var(--text-primary);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* =========================================================
+   REPORT MODAL
+   ========================================================= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(3px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-bright);
+  border-top: 3px solid var(--accent-orange);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+  animation: modalSlide 0.2s ease-out;
+}
+
+@keyframes modalSlide {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  padding: 18px 20px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.modal-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.btn-close:hover {
+  color: var(--accent-red);
+}
+
+.modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.form-group select,
+.form-group textarea,
+.form-group input {
+  background-color: var(--bg-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group select:focus,
+.form-group textarea:focus,
+.form-group input:focus {
+  border-color: var(--accent-orange);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+
+.coordinates-preview {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: var(--bg-main);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px dashed var(--border-subtle);
+}
+
+.coordinates-preview code {
+  color: var(--accent-orange);
+  font-family: monospace;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.btn-primary {
+  background: var(--accent-orange);
+  border: none;
+  color: #fff;
+  padding: 9px 18px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-primary:hover {
+  background: var(--accent-orange-hover);
+}
+
+/* =========================================================
+   CUSTOM LEAFLET STYLING (DARK THEME COMPATIBILITY)
+   ========================================================= */
+
+/* Zoom controls */
+.leaflet-bar {
+  border: 1px solid var(--border-subtle) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5) !important;
+}
+
+.leaflet-bar a {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.leaflet-bar a:hover {
+  background-color: var(--bg-card-hover) !important;
+  color: var(--accent-orange) !important;
+}
+
+/* Leaflet Attribution Bar */
+.leaflet-container .leaflet-control-attribution {
+  background: rgba(13, 17, 23, 0.85) !important;
+  color: var(--text-muted) !important;
+  font-size: 10px;
+}
+
+.leaflet-container .leaflet-control-attribution a {
+  color: var(--accent-orange) !important;
+}
+
+/* Leaflet Popup Styling */
+.leaflet-popup-content-wrapper {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-bright);
+  border-radius: 10px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7) !important;
+  padding: 4px;
+}
+
+.leaflet-popup-tip {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-bright);
+}
+
+.leaflet-popup-close-button {
+  color: var(--text-secondary) !important;
+  padding: 8px !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: var(--accent-red) !important;
+}
+
+/* Custom Inside Popup Styling */
+.hazard-popup {
+  padding: 4px;
+  font-family: var(--font-stack);
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.popup-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.popup-badge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.badge-low { background: #3b82f6; color: #fff; }
+.badge-medium { background: #f59e0b; color: #000; }
+.badge-high { background: #ef4444; color: #fff; }
+
+.popup-desc {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.popup-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.btn-resolve {
+  width: 100%;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid var(--accent-red);
+  color: #fca5a5;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-resolve:hover {
+  background: var(--accent-red);
+  color: #fff;
+}
+
+/* =========================================================
+   CUSTOM MAP MARKERS (CSS / SVG PIN ICONS)
+   ========================================================= */
+
+/* Base Pin Marker */
+.hazard-marker-pin {
+  width: 38px;
+  height: 38px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.hazard-marker-pin:hover {
+  transform: rotate(-45deg) scale(1.15);
+}
+
+.hazard-marker-pin span {
+  transform: rotate(45deg);
+  font-size: 1.15rem;
+  user-select: none;
+}
+
+/* Type Colors for Pins */
+.pin-pothole { background-color: var(--hazard-pothole); }
+.pin-waterlogging { background-color: var(--hazard-water); }
+.pin-accident { background-color: var(--hazard-accident); }
+.pin-broken_signal { background-color: var(--hazard-signal); }
+.pin-debris { background-color: #854d0e; }
+.pin-other { background-color: var(--hazard-other); }
+
+/* User Location Marker with Pulsing Radar */
+.user-location-pin {
+  width: 20px;
+  height: 20px;
+  background-color: #38bdf8;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #38bdf8;
+  position: relative;
+}
+
+.user-location-pulse {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 34px;
+  height: 34px;
+  border: 2px solid #38bdf8;
+  border-radius: 50%;
+  animation: radarPulse 1.8s infinite ease-out;
+}
+
+@keyframes radarPulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* =========================================================
+   RESPONSIVE DESIGN (MOBILE & TABLET)
+   ========================================================= */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 10px 14px;
+  }
+
+  .brand-title {
+    font-size: 1.15rem;
+  }
+
+  .brand-tagline {
+    font-size: 0.75rem;
+  }
+
+  .hint-pill {
+    display: none; /* Keep mobile header clean */
+  }
+
+  .header-content {
+    gap: 8px;
+  }
+
+  .map-controls {
+    top: 10px;
+    right: 10px;
+  }
+
+  .btn-locate {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+
+  .notification-toast {
+    width: 92%;
+    bottom: 16px;
+    font-size: 0.85rem;
+    padding: 10px 14px;
+  }
+}
