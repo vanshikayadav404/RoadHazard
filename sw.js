@@ -4,7 +4,7 @@
  * Uses relative paths for GitHub Pages subfolder compatibility
  */
 
-const CACHE_NAME = 'roadhazard-pwa-v2';
+const CACHE_NAME = 'roadhazard-pwa-v3';
 
 // App's own local files to precache
 const PRECACHE_ASSETS = [
@@ -12,6 +12,7 @@ const PRECACHE_ASSETS = [
   'index.html',
   'style.css',
   'script.js',
+  'firebase.config.js',
   'manifest.json',
   'icon-192.png',
   'icon-512.png'
@@ -43,7 +44,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: intercept requests for app's own files, strictly ignore map tiles
+// Fetch: intercept requests for app's own files, strictly ignore map tiles and Firestore/Firebase requests
 self.addEventListener('fetch', (event) => {
   // Only process GET requests
   if (event.request.method !== 'GET') {
@@ -52,10 +53,14 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // Strictly skip map tiles and external origins (never cache map tiles)
+  // Strictly skip map tiles, external origins, and any Firebase/Firestore requests
   if (
     url.hostname.includes('tile.openstreetmap.org') ||
     url.pathname.includes('/tile/') ||
+    url.hostname.includes('firestore.googleapis.com') ||
+    url.hostname.includes('firebase') ||
+    url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('gstatic.com') ||
     url.origin !== self.location.origin
   ) {
     return; // Pass through to network

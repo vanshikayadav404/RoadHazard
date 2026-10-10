@@ -28,6 +28,11 @@ var hazards = [];
 // Dictionary mapping marker IDs to actual Leaflet marker objects
 var mapMarkers = {};
 
+// Firebase Firestore references and state
+var db = null;
+var isFirestoreActive = false;
+var firestoreUnsubscribe = null;
+
 // Hazard type metadata (icons and readable labels)
 var HAZARD_TYPES = {
   pothole: { label: "Pothole / Road Damage", icon: "🕳️", className: "pin-pothole" },
@@ -159,6 +164,9 @@ function initMap() {
 
   // 6. Automatically ask for the user's location on page load
   autoLocateUser();
+
+  // 7. Connect to Firebase Firestore and listen for real-time updates from other users
+  initFirestoreAndListen();
 }
 
 // Automatically request the user's location using browser geolocation
@@ -256,8 +264,8 @@ function renderHazardMarker(hazard) {
       '<div style="margin-bottom: 8px;">' +
         '<span class="popup-badge ' + severityClass + '">' + severityText + ' SEVERITY</span>' +
       '</div>' +
-      '<p class="popup-desc">' + (escapeHtml(hazard.description) || "No additional details provided.") + '</p>' +
-      '<div class="popup-meta">Reported: ' + (hazard.reportedAt || "Just now") + '</div>' +
+      '<p class="popup-desc">' + (escapeHtml(hazard.notes || hazard.description) || "No additional details provided.") + '</p>' +
+      '<div class="popup-meta">Reported: ' + (hazard.createdTime || hazard.reportedAt || "Just now") + '</div>' +
       '<div class="popup-actions">' +
         '<button class="btn-share" onclick="shareHazard(\'' + hazard.id + '\')">📤 Share</button>' +
         '<button class="btn-resolve" onclick="resolveHazard(\'' + hazard.id + '\')">✓ Resolve</button>' +
@@ -284,7 +292,7 @@ function updateCounter() {
 }
 
 // =========================================================================
-// 6. STORAGE (LocalStorage with bulletproof persistence & console logs)
+// 6. STORAGE & FIREBASE FIRESTORE REAL-TIME SYNC
 // =========================================================================
 
 function saveHazards() {
@@ -346,6 +354,127 @@ function loadHazards() {
   updateCounter();
 }
 
+// Synchronize map markers with a new hazards list (adds new pins, removes resolved pins, preserves open popups)
+function syncMapMarkers(hazardList) {
+  var activeIds = {};
+  hazardList.forEach(function (h) {
+    activeIds[h.id] = true;
+    if (!mapMarkers[h.id]) {
+      // New hazard from Firestore or local submit: add pin
+      renderHazardMarker(h);
+    }
+  });
+
+  // Remove markers that are no longer active (e.g. resolved or deleted by anyone)
+  for (var id in mapMarkers) {
+    if (mapMarkers.hasOwnProperty(id)) {
+      if (!activeIds[id]) {
+        map.removeLayer(mapMarkers[id]);
+        delete mapMarkers[id];
+      }
+    }
+  }
+}
+
+// Connect to Firebase Firestore and subscribe to real-time updates for the 'hazards' collection
+function initFirestoreAndListen() {
+  if (typeof firebase === "undefined") {
+    console.warn("[RoadHazard] ⚠️ Firebase SDK not detected. Operating in localStorage fallback mode.");
+    return;
+  }
+
+  var config = window.firebaseConfig || (typeof firebaseConfig !== "undefined" ? firebaseConfig : null);
+  if (!config || !config.apiKey || !config.projectId || config.apiKey.trim() === "" || config.projectId.trim() === "") {
+    console.log("[RoadHazard] ℹ️ Firebase credentials not provided in firebase.config.js. Operating in localStorage fallback mode.");
+    return;
+  }
+
+  try {
+    if (!firebase.apps || firebase.apps.length === 0) {
+      firebase.initializeApp(config);
+    }
+    db = firebase.firestore();
+    console.log("[RoadHazard] 🔥 Firebase Firestore connected successfully for project:", config.projectId);
+  } catch (initErr) {
+    console.warn("[RoadHazard] ⚠️ Failed to initialize Firebase (" + initErr.message + "). Falling back to localStorage.");
+    db = null;
+    isFirestoreActive = false;
+    return;
+  }
+
+  // Listen for real-time updates from Firestore 'hazards' collection
+  try {
+    console.log("[RoadHazard] 🔄 Subscribing to real-time updates on Firestore collection 'hazards'...");
+    firestoreUnsubscribe = db.collection("hazards").onSnapshot(
+      function (snapshot) {
+        console.log("[RoadHazard] 📡 Real-time Firestore snapshot received (" + snapshot.size + " total documents).");
+        isFirestoreActive = true;
+
+        var firestoreHazards = [];
+        snapshot.forEach(function (doc) {
+          var data = doc.data() || {};
+          // Only show active (unresolved) hazards
+          var isResolved = 
+            data.resolvedStatus === true || 
+            data.resolvedStatus === "resolved" || 
+            data.resolved === true;
+
+          if (!isResolved) {
+            var lat = null;
+            var lng = null;
+            if (data.coordinates && typeof data.coordinates.lat === "number" && typeof data.coordinates.lng === "number") {
+              lat = data.coordinates.lat;
+              lng = data.coordinates.lng;
+            } else if (typeof data.lat === "number" && typeof data.lng === "number") {
+              lat = data.lat;
+              lng = data.lng;
+            }
+
+            if (lat !== null && lng !== null) {
+              firestoreHazards.push({
+                id: doc.id,
+                lat: lat,
+                lng: lng,
+                type: data.type || "other",
+                severity: data.severity || "medium",
+                notes: data.notes || data.description || "",
+                description: data.notes || data.description || "",
+                createdTime: data.createdTime || data.reportedAt || formatCurrentTime(),
+                reportedAt: data.createdTime || data.reportedAt || formatCurrentTime(),
+                resolvedStatus: false,
+                resolved: false
+              });
+            }
+          }
+        });
+
+        // Update active hazards array with live Firestore data
+        hazards = firestoreHazards;
+
+        // Persist to local storage as offline cache
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(hazards));
+        } catch (e) {
+          // ignore localStorage quota errors
+        }
+
+        // Real-time map update: new pins appear automatically, resolved disappear
+        syncMapMarkers(hazards);
+
+        // Update active hazards counter & nearby panel in real-time
+        updateCounter();
+      },
+      function (error) {
+        console.warn("[RoadHazard] ⚠️ Firestore real-time listener error (" + error.message + "). Falling back to localStorage.");
+        isFirestoreActive = false;
+      }
+    );
+  } catch (listenerErr) {
+    console.warn("[RoadHazard] ⚠️ Error setting up Firestore listener (" + listenerErr.message + "). Falling back to localStorage.");
+    isFirestoreActive = false;
+  }
+}
+
 // Function called to mark a hazard as resolved
 window.resolveHazard = function (hazardId) {
   console.log("[RoadHazard] ✔️ Resolving hazard ID:", hazardId);
@@ -356,13 +485,27 @@ window.resolveHazard = function (hazardId) {
     delete mapMarkers[hazardId];
   }
 
-  // Remove from hazards array
+  // Remove from local hazards array
   hazards = hazards.filter(function (h) {
     return h.id !== hazardId;
   });
 
   saveHazards();
   showToast("Hazard resolved and removed from map.", "success");
+
+  // Write resolved status to Firestore if connected
+  if (isFirestoreActive && db) {
+    console.log("[RoadHazard] 🔥 Writing resolved status to Firestore for hazard ID:", hazardId);
+    db.collection("hazards").doc(hazardId).set({
+      resolvedStatus: true,
+      resolved: true,
+      resolvedAt: formatCurrentTime()
+    }, { merge: true }).then(function () {
+      console.log("[RoadHazard] ✅ Successfully marked hazard resolved in Firestore:", hazardId);
+    }).catch(function (err) {
+      console.error("[RoadHazard] ❌ Failed to write resolved status to Firestore:", err);
+    });
+  }
 };
 
 // Function called to delete a hazard
@@ -375,13 +518,23 @@ window.deleteHazard = function (hazardId) {
     delete mapMarkers[hazardId];
   }
 
-  // Remove from hazards array
+  // Remove from local hazards array
   hazards = hazards.filter(function (h) {
     return h.id !== hazardId;
   });
 
   saveHazards();
   showToast("Hazard deleted from map and storage.", "success");
+
+  // Delete from Firestore if connected
+  if (isFirestoreActive && db) {
+    console.log("[RoadHazard] 🔥 Deleting hazard from Firestore:", hazardId);
+    db.collection("hazards").doc(hazardId).delete().then(function () {
+      console.log("[RoadHazard] ✅ Successfully deleted hazard from Firestore:", hazardId);
+    }).catch(function (err) {
+      console.error("[RoadHazard] ❌ Failed to delete hazard from Firestore:", err);
+    });
+  }
 };
 
 // =========================================================================
@@ -466,7 +619,7 @@ function updateNearbyPanel() {
       distanceDisplay = "Distance unavailable";
     }
 
-    var desc = escapeHtml(h.description) || "No additional description";
+    var desc = escapeHtml(h.notes || h.description) || "No additional description";
 
     html +=
       '<div class="nearby-card" onclick="focusHazardOnMap(\'' + h.id + '\')">' +
@@ -507,10 +660,11 @@ window.shareHazard = function (hazardId) {
 
   var typeMeta = HAZARD_TYPES[hazard.type] || HAZARD_TYPES.other;
   var mapsUrl = "https://www.google.com/maps?q=" + hazard.lat + "," + hazard.lng;
+  var desc = hazard.notes || hazard.description || "";
   var shareText = 
     "⚠️ Road Hazard Alert: " + typeMeta.icon + " " + typeMeta.label + " (" + (hazard.severity || "medium").toUpperCase() + " Severity)\n" +
     "📍 Location: " + mapsUrl + "\n" +
-    (hazard.description ? "📝 Details: " + hazard.description : "");
+    (desc ? "📝 Details: " + desc : "");
 
   if (navigator.share) {
     navigator.share({
@@ -670,18 +824,43 @@ function handleFormSubmit(e) {
     return;
   }
 
+  var hazardId = "hazard-" + Date.now();
+  var currentTime = formatCurrentTime();
+
   // Create new hazard report object
   var newHazard = {
-    id: "hazard-" + Date.now(),
+    id: hazardId,
     lat: pendingLocation.lat,
     lng: pendingLocation.lng,
     type: hazardTypeSelect.value,
     severity: hazardSeveritySelect.value,
+    notes: description,
     description: description,
-    reportedAt: formatCurrentTime()
+    createdTime: currentTime,
+    reportedAt: currentTime,
+    resolvedStatus: false,
+    resolved: false
   };
 
-  // Add to state and save
+  // Firestore document payload
+  var firestoreDoc = {
+    type: newHazard.type,
+    severity: newHazard.severity,
+    notes: description,
+    description: description,
+    coordinates: {
+      lat: pendingLocation.lat,
+      lng: pendingLocation.lng
+    },
+    lat: pendingLocation.lat,
+    lng: pendingLocation.lng,
+    createdTime: currentTime,
+    reportedAt: currentTime,
+    resolvedStatus: false,
+    resolved: false
+  };
+
+  // Add to local state and save to local storage
   console.log("[RoadHazard] ➕ Adding new hazard report:", newHazard);
   hazards.push(newHazard);
   saveHazards();
@@ -693,6 +872,16 @@ function handleFormSubmit(e) {
   if (mapMarkers[newHazard.id]) {
     map.panTo([newHazard.lat, newHazard.lng]);
     mapMarkers[newHazard.id].openPopup();
+  }
+
+  // Write to Firestore collection 'hazards' if active
+  if (isFirestoreActive && db) {
+    console.log("[RoadHazard] 🔥 Writing hazard to Firestore collection 'hazards' (ID: " + hazardId + ")...");
+    db.collection("hazards").doc(hazardId).set(firestoreDoc).then(function () {
+      console.log("[RoadHazard] ✅ Successfully written hazard to Firestore:", hazardId);
+    }).catch(function (err) {
+      console.error("[RoadHazard] ❌ Failed to write hazard to Firestore:", err);
+    });
   }
 
   closeModal();
