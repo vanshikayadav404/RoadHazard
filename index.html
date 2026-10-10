@@ -34,7 +34,7 @@
         <span class="brand-icon">⚠️</span>
         <div class="brand-text">
           <h1 class="brand-title">RoadHazard Reporter</h1>
-          <p class="brand-tagline">Report and track road hazards in real time to keep everyone safe.</p>
+          <p class="brand-tagline">Mark and share Road Hazard on the map.</p>
         </div>
       </div>
       
@@ -44,6 +44,9 @@
           <span class="counter-label">Active Hazards:</span>
           <span class="counter-badge" id="counterNumber">0</span>
         </div>
+        <button id="nearbyToggleBtn" class="btn-nearby-pill" title="View hazards sorted by distance from your location">
+          📍 Nearby (<span id="nearbyCount">0</span>)
+        </button>
         <div class="hint-pill">
           💡 Click anywhere on the map to report a hazard
         </div>
@@ -63,6 +66,20 @@
         <span class="locate-text">Use My Location</span>
       </button>
     </div>
+
+    <!-- Nearby Hazards Panel (Sorted by distance from user) -->
+    <aside id="nearbyPanel" class="nearby-panel hidden" aria-label="Nearby road hazards">
+      <div class="nearby-header">
+        <div class="nearby-title-wrap">
+          <h2 class="nearby-title">📍 Nearby Hazards</h2>
+          <span id="nearbyDistanceStatus" class="nearby-status-badge">Detecting...</span>
+        </div>
+        <button id="nearbyCloseBtn" class="btn-nearby-close" aria-label="Close nearby hazards panel">&times;</button>
+      </div>
+      <div id="nearbyList" class="nearby-list">
+        <!-- Populated dynamically -->
+      </div>
+    </aside>
 
     <!-- Empty State Banner (Shown when no hazards exist) -->
     <div id="emptyStateBanner" class="empty-state-banner hidden">

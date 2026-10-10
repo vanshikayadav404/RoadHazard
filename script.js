@@ -16,6 +16,9 @@ var map = null;
 // Holds the user's current location marker (if found)
 var userLocationMarker = null;
 
+// Stores the user's latest detected coordinates [lat, lng]
+var currentUserLatLng = null;
+
 // Temporary coordinates when a user clicks on the map to report a hazard
 var pendingLocation = null;
 
@@ -92,6 +95,12 @@ var formError = document.getElementById("formError");
 var emptyStateBanner = document.getElementById("emptyStateBanner");
 var legendToggleBtn = document.getElementById("legendToggleBtn");
 var legendBody = document.getElementById("legendBody");
+var nearbyToggleBtn = document.getElementById("nearbyToggleBtn");
+var nearbyCloseBtn = document.getElementById("nearbyCloseBtn");
+var nearbyPanel = document.getElementById("nearbyPanel");
+var nearbyList = document.getElementById("nearbyList");
+var nearbyCount = document.getElementById("nearbyCount");
+var nearbyDistanceStatus = document.getElementById("nearbyDistanceStatus");
 var notificationToast = document.getElementById("notificationToast");
 var toastMessage = document.getElementById("toastMessage");
 var toastIcon = document.getElementById("toastIcon");
@@ -165,9 +174,11 @@ function autoLocateUser() {
       var lat = position.coords.latitude;
       var lng = position.coords.longitude;
       var userLatLng = [lat, lng];
+      currentUserLatLng = userLatLng;
 
       console.log("[RoadHazard] ✅ Geolocation success: moved map to user position (" + lat.toFixed(5) + ", " + lng.toFixed(5) + ") at zoom 15.");
       map.setView(userLatLng, 15);
+      updateNearbyPanel();
 
       // Create or update user location marker
       if (!userLocationMarker) {
@@ -248,6 +259,7 @@ function renderHazardMarker(hazard) {
       '<p class="popup-desc">' + (escapeHtml(hazard.description) || "No additional details provided.") + '</p>' +
       '<div class="popup-meta">Reported: ' + (hazard.reportedAt || "Just now") + '</div>' +
       '<div class="popup-actions">' +
+        '<button class="btn-share" onclick="shareHazard(\'' + hazard.id + '\')">📤 Share</button>' +
         '<button class="btn-resolve" onclick="resolveHazard(\'' + hazard.id + '\')">✓ Resolve</button>' +
         '<button class="btn-delete" onclick="deleteHazard(\'' + hazard.id + '\')">🗑️ Delete</button>' +
       '</div>' +
@@ -268,6 +280,7 @@ function updateCounter() {
       emptyStateBanner.classList.add("hidden");
     }
   }
+  updateNearbyPanel();
 }
 
 // =========================================================================
@@ -372,6 +385,161 @@ window.deleteHazard = function (hazardId) {
 };
 
 // =========================================================================
+// 6b. NEARBY HAZARDS (SORTED BY DISTANCE) & SHARING
+// =========================================================================
+
+// Calculate geographic distance in kilometers using the Haversine formula
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  var R = 6371; // Earth's radius in km
+  var dLat = (lat2 - lat1) * Math.PI / 180;
+  var dLon = (lon2 - lon1) * Math.PI / 180;
+  var a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Update the nearby hazards list sorted by distance from user location
+function updateNearbyPanel() {
+  if (nearbyCount) {
+    nearbyCount.textContent = hazards.length;
+  }
+  if (!nearbyList) return;
+
+  if (hazards.length === 0) {
+    nearbyList.innerHTML = '<div class="nearby-empty-hint">🎉 No active road hazards reported.</div>';
+    if (nearbyDistanceStatus) {
+      nearbyDistanceStatus.textContent = "All Clear";
+      nearbyDistanceStatus.className = "nearby-status-badge";
+    }
+    return;
+  }
+
+  // Update distance status badge
+  if (nearbyDistanceStatus) {
+    if (currentUserLatLng) {
+      nearbyDistanceStatus.textContent = "Sorted by Distance";
+      nearbyDistanceStatus.className = "nearby-status-badge";
+    } else {
+      nearbyDistanceStatus.textContent = "Location Needed";
+      nearbyDistanceStatus.className = "nearby-status-badge status-offline";
+    }
+  }
+
+  // Clone hazards and calculate distance from user location if known
+  var items = hazards.slice().map(function (h) {
+    var dist = null;
+    if (currentUserLatLng) {
+      dist = calculateDistanceKm(currentUserLatLng[0], currentUserLatLng[1], h.lat, h.lng);
+    }
+    return {
+      hazard: h,
+      distanceKm: dist
+    };
+  });
+
+  // Sort ascending by distance if user location is available
+  if (currentUserLatLng) {
+    items.sort(function (a, b) {
+      return a.distanceKm - b.distanceKm;
+    });
+  }
+
+  // Render cards
+  var html = "";
+  items.forEach(function (item) {
+    var h = item.hazard;
+    var meta = HAZARD_TYPES[h.type] || HAZARD_TYPES.other;
+    var badgeClass = "badge-" + (h.severity || "medium");
+    var severityText = (h.severity || "medium").toUpperCase();
+
+    var distanceDisplay = "";
+    if (item.distanceKm !== null) {
+      if (item.distanceKm < 1) {
+        distanceDisplay = Math.round(item.distanceKm * 1000) + " m away";
+      } else {
+        distanceDisplay = item.distanceKm.toFixed(1) + " km away";
+      }
+    } else {
+      distanceDisplay = "Distance unavailable";
+    }
+
+    var desc = escapeHtml(h.description) || "No additional description";
+
+    html +=
+      '<div class="nearby-card" onclick="focusHazardOnMap(\'' + h.id + '\')">' +
+        '<div class="nearby-card-top">' +
+          '<span class="nearby-card-type">' + meta.icon + ' ' + meta.label + '</span>' +
+          '<span class="nearby-card-dist">' + distanceDisplay + '</span>' +
+        '</div>' +
+        '<div>' +
+          '<span class="popup-badge ' + badgeClass + '">' + severityText + ' SEVERITY</span>' +
+        '</div>' +
+        '<p class="nearby-card-desc">' + desc + '</p>' +
+      '</div>';
+  });
+
+  nearbyList.innerHTML = html;
+}
+
+// Center map on hazard and open its popup when clicked in nearby panel
+window.focusHazardOnMap = function (hazardId) {
+  var h = hazards.find(function (item) { return item.id === hazardId; });
+  if (!h || !map) return;
+
+  map.flyTo([h.lat, h.lng], 15, { animate: true, duration: 1.2 });
+  if (mapMarkers[h.id]) {
+    mapMarkers[h.id].openPopup();
+  }
+
+  // On small mobile screens, close the nearby panel so map is visible
+  if (window.innerWidth <= 768 && nearbyPanel) {
+    nearbyPanel.classList.add("hidden");
+  }
+};
+
+// Share hazard popup button handler
+window.shareHazard = function (hazardId) {
+  var hazard = hazards.find(function (h) { return h.id === hazardId; });
+  if (!hazard) return;
+
+  var typeMeta = HAZARD_TYPES[hazard.type] || HAZARD_TYPES.other;
+  var mapsUrl = "https://www.google.com/maps?q=" + hazard.lat + "," + hazard.lng;
+  var shareText = 
+    "⚠️ Road Hazard Alert: " + typeMeta.icon + " " + typeMeta.label + " (" + (hazard.severity || "medium").toUpperCase() + " Severity)\n" +
+    "📍 Location: " + mapsUrl + "\n" +
+    (hazard.description ? "📝 Details: " + hazard.description : "");
+
+  if (navigator.share) {
+    navigator.share({
+      title: "Road Hazard Alert: " + typeMeta.label,
+      text: shareText,
+      url: mapsUrl
+    }).catch(function (err) {
+      if (err.name !== "AbortError") {
+        copyShareMessage(shareText);
+      }
+    });
+  } else {
+    copyShareMessage(shareText);
+  }
+};
+
+function copyShareMessage(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () {
+      showToast("Copied alert with Google Maps link to clipboard! Ready to send on WhatsApp.", "success");
+    }).catch(function () {
+      window.prompt("Copy this hazard alert link to share on WhatsApp:", text);
+    });
+  } else {
+    window.prompt("Copy this hazard alert link to share on WhatsApp:", text);
+  }
+}
+
+// =========================================================================
 // 7. USER GEOLOCATION ("Use My Location")
 // =========================================================================
 function handleLocateUser() {
@@ -399,6 +567,8 @@ function handleLocateUser() {
       var lat = position.coords.latitude;
       var lng = position.coords.longitude;
       var userLatLng = [lat, lng];
+      currentUserLatLng = userLatLng;
+      updateNearbyPanel();
 
       // Smoothly fly map to user's location
       map.flyTo(userLatLng, 15, {
@@ -591,6 +761,19 @@ locateBtn.addEventListener("click", handleLocateUser);
 modalCloseBtn.addEventListener("click", closeModal);
 modalCancelBtn.addEventListener("click", closeModal);
 hazardForm.addEventListener("submit", handleFormSubmit);
+
+// Toggle nearby hazards panel
+if (nearbyToggleBtn && nearbyPanel) {
+  nearbyToggleBtn.addEventListener("click", function () {
+    nearbyPanel.classList.toggle("hidden");
+  });
+}
+
+if (nearbyCloseBtn && nearbyPanel) {
+  nearbyCloseBtn.addEventListener("click", function () {
+    nearbyPanel.classList.add("hidden");
+  });
+}
 
 // Clear form error when user begins typing description
 if (hazardDescInput) {

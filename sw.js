@@ -4,7 +4,7 @@
  * Uses relative paths for GitHub Pages subfolder compatibility
  */
 
-const CACHE_NAME = 'roadhazard-pwa-v1';
+const CACHE_NAME = 'roadhazard-pwa-v2';
 
 // App's own local files to precache
 const PRECACHE_ASSETS = [
