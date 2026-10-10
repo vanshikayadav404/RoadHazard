@@ -147,6 +147,53 @@ function initMap() {
   // 5. Zoom the map to fit all saved hazard pins with padding (maxZoom: 15)
   // If there are no hazards, it cleanly keeps the India view set above
   fitMapToHazards();
+
+  // 6. Automatically ask for the user's location on page load
+  autoLocateUser();
+}
+
+// Automatically request the user's location using browser geolocation
+function autoLocateUser() {
+  if (!navigator.geolocation) {
+    console.log("[RoadHazard] ❌ Geolocation is not supported by this browser. Keeping current view.");
+    return;
+  }
+
+  console.log("[RoadHazard] 🌐 Requesting user location on page load...");
+  navigator.geolocation.getCurrentPosition(
+    function (position) {
+      var lat = position.coords.latitude;
+      var lng = position.coords.longitude;
+      var userLatLng = [lat, lng];
+
+      console.log("[RoadHazard] ✅ Geolocation success: moved map to user position (" + lat.toFixed(5) + ", " + lng.toFixed(5) + ") at zoom 15.");
+      map.setView(userLatLng, 15);
+
+      // Create or update user location marker
+      if (!userLocationMarker) {
+        userLocationMarker = L.marker(userLatLng, {
+          icon: createUserLocationIcon()
+        }).addTo(map);
+
+        userLocationMarker.bindPopup(
+          '<div style="text-align: center; padding: 4px;">' +
+            '<strong>📍 You Are Here</strong>' +
+            '<p style="font-size: 0.8rem; color: #94a3b8; margin-top: 4px;">Click nearby on the map if you see any hazards.</p>' +
+          '</div>'
+        );
+      } else {
+        userLocationMarker.setLatLng(userLatLng);
+      }
+    },
+    function (error) {
+      console.log("[RoadHazard] ❌ Geolocation failed or was denied (" + error.message + "). Keeping current view.");
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
+  );
 }
 
 // =========================================================================
