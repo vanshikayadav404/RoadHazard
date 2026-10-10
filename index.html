@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RoadHazard Reporter</title>
 
+  <!-- PWA & Mobile Web App Meta Tags -->
+  <meta name="theme-color" content="#0d1117">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RoadHazard">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+
   <!-- Leaflet Map CSS from Official CDN -->
   <link 
     rel="stylesheet" 
@@ -151,5 +160,20 @@
 
   <!-- Application Logic (Normal Script Tag, no ES modules) -->
   <script src="script.js"></script>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js')
+          .then(function (registration) {
+            console.log('[PWA] Service Worker registered with scope:', registration.scope);
+          })
+          .catch(function (error) {
+            console.log('[PWA] Service Worker registration skipped or failed:', error.message);
+          });
+      });
+    }
+  </script>
 </body>
 </html>
