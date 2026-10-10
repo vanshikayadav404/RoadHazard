@@ -88,6 +88,10 @@ var hazardSeveritySelect = document.getElementById("hazardSeverity");
 var hazardDescInput = document.getElementById("hazardDescription");
 var coordsDisplay = document.getElementById("coordsDisplay");
 var counterNumber = document.getElementById("counterNumber");
+var formError = document.getElementById("formError");
+var emptyStateBanner = document.getElementById("emptyStateBanner");
+var legendToggleBtn = document.getElementById("legendToggleBtn");
+var legendBody = document.getElementById("legendBody");
 var notificationToast = document.getElementById("notificationToast");
 var toastMessage = document.getElementById("toastMessage");
 var toastIcon = document.getElementById("toastIcon");
@@ -95,30 +99,54 @@ var toastCloseBtn = document.getElementById("toastCloseBtn");
 var toastTimeoutId = null;
 
 // =========================================================================
-// 3. MAP INITIALIZATION (Centered on India)
+// 3. MAP INITIALIZATION & AUTO-FIT HAZARDS
 // =========================================================================
+
+// Zoom the map to fit all saved hazard pins with padding, or keep India view if none
+function fitMapToHazards() {
+  if (hazards && hazards.length > 0) {
+    var latLngs = hazards.map(function (h) {
+      return [h.lat, h.lng];
+    });
+    var bounds = L.latLngBounds(latLngs);
+    if (bounds.isValid()) {
+      console.log("[RoadHazard] 📌 Zooming map to fit " + hazards.length + " saved hazard(s) with padding (maxZoom: 15).");
+      map.fitBounds(bounds, {
+        padding: [50, 50],
+        maxZoom: 15
+      });
+      return;
+    }
+  }
+  console.log("[RoadHazard] 🇮🇳 No saved hazards found. Keeping default India view.");
+}
+
 function initMap() {
-  // Center coordinates for India [Latitude, Longitude], Zoom level 5
+  // Default coordinates for India [Latitude, Longitude], Zoom level 5
   var indiaCenter = [20.5937, 78.9629];
   var initialZoom = 5;
 
-  // Create the Leaflet map inside the #map div
+  // 1. Create the Leaflet map inside the #map div, initially centered on India
   map = L.map("map", {
     zoomControl: true
   }).setView(indiaCenter, initialZoom);
 
-  // Add standard OpenStreetMap tiles over HTTPS
+  // 2. Add standard OpenStreetMap tiles over HTTPS
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
     referrerPolicy: 'strict-origin-when-cross-origin'
   }).addTo(map);
 
-  // Listen for clicks on the map to trigger hazard reporting
+  // 3. Listen for clicks on the map to trigger hazard reporting
   map.on("click", onMapClick);
 
-  // Load saved hazards or starter data
+  // 4. Load saved hazards from localStorage and draw all pins
   loadHazards();
+
+  // 5. Zoom the map to fit all saved hazard pins with padding (maxZoom: 15)
+  // If there are no hazards, it cleanly keeps the India view set above
+  fitMapToHazards();
 }
 
 // =========================================================================
@@ -172,9 +200,10 @@ function renderHazardMarker(hazard) {
       '</div>' +
       '<p class="popup-desc">' + (escapeHtml(hazard.description) || "No additional details provided.") + '</p>' +
       '<div class="popup-meta">Reported: ' + (hazard.reportedAt || "Just now") + '</div>' +
-      '<button class="btn-resolve" onclick="resolveHazard(\'' + hazard.id + '\')">' +
-        '✓ Mark as Cleared / Resolved' +
-      '</button>' +
+      '<div class="popup-actions">' +
+        '<button class="btn-resolve" onclick="resolveHazard(\'' + hazard.id + '\')">✓ Resolve</button>' +
+        '<button class="btn-delete" onclick="deleteHazard(\'' + hazard.id + '\')">🗑️ Delete</button>' +
+      '</div>' +
     '</div>';
 
   marker.bindPopup(popupContent);
@@ -185,32 +214,62 @@ function updateCounter() {
   if (counterNumber) {
     counterNumber.textContent = hazards.length;
   }
+  if (emptyStateBanner) {
+    if (hazards.length === 0) {
+      emptyStateBanner.classList.remove("hidden");
+    } else {
+      emptyStateBanner.classList.add("hidden");
+    }
+  }
 }
 
 // =========================================================================
-// 6. STORAGE (LocalStorage with fallback)
+// 6. STORAGE (LocalStorage with bulletproof persistence & console logs)
 // =========================================================================
+
+function saveHazards() {
+  try {
+    var serialized = JSON.stringify(hazards);
+    localStorage.setItem(STORAGE_KEY, serialized);
+    console.log("[RoadHazard] 💾 SAVED " + hazards.length + " hazard(s) to localStorage (Key: '" + STORAGE_KEY + "'):", hazards);
+  } catch (err) {
+    console.error("[RoadHazard] ❌ Could not save to localStorage:", err);
+  }
+  updateCounter();
+}
+
 function loadHazards() {
+  console.log("[RoadHazard] 📂 LOADING hazards from localStorage (Key: '" + STORAGE_KEY + "')...");
   var saved = null;
   try {
     saved = localStorage.getItem(STORAGE_KEY);
-  } catch (e) {
-    console.warn("LocalStorage access error:", e);
+  } catch (err) {
+    console.error("[RoadHazard] ❌ Could not read from localStorage:", err);
   }
 
-  if (saved) {
-    try {
-      hazards = JSON.parse(saved);
-    } catch (e) {
-      hazards = STARTER_HAZARDS.slice();
-    }
+  // Key is strictly null ONLY when it has never been set in localStorage
+  if (saved === null) {
+    console.log("[RoadHazard] ℹ️ LocalStorage has NEVER been set (null). Loading default sample hazards for first-time use.");
+    hazards = JSON.parse(JSON.stringify(STARTER_HAZARDS));
+    saveHazards(); // Persist starter hazards so key is set from now on
   } else {
-    // First time opening: populate starter hazards
-    hazards = STARTER_HAZARDS.slice();
-    saveHazards();
+    console.log("[RoadHazard] ✅ Found existing localStorage data (Raw JSON length: " + saved.length + "). Reading saved data...");
+    try {
+      var parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        hazards = parsed;
+        console.log("[RoadHazard] ✅ Successfully loaded " + hazards.length + " hazard(s) from storage.");
+      } else {
+        console.warn("[RoadHazard] ⚠️ Saved data is not an array. Keeping list empty (will NOT overwrite with sample data).");
+        hazards = [];
+      }
+    } catch (parseErr) {
+      console.error("[RoadHazard] ❌ Failed to parse JSON from localStorage:", parseErr);
+      hazards = []; // Never overwrite user's saved data with sample hazards!
+    }
   }
 
-  // Clear existing markers if any
+  // Clear existing markers from the map if any
   for (var id in mapMarkers) {
     if (mapMarkers.hasOwnProperty(id)) {
       map.removeLayer(mapMarkers[id]);
@@ -218,7 +277,8 @@ function loadHazards() {
   }
   mapMarkers = {};
 
-  // Add markers to map
+  // Draw all pins on the map
+  console.log("[RoadHazard] 📍 Drawing " + hazards.length + " pin(s) on the map from localStorage.");
   hazards.forEach(function (hazard) {
     renderHazardMarker(hazard);
   });
@@ -226,17 +286,10 @@ function loadHazards() {
   updateCounter();
 }
 
-function saveHazards() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(hazards));
-  } catch (e) {
-    console.warn("Could not save to LocalStorage:", e);
-  }
-  updateCounter();
-}
-
-// Function called by "Mark as Cleared" button in marker popup
+// Function called to mark a hazard as resolved
 window.resolveHazard = function (hazardId) {
+  console.log("[RoadHazard] ✔️ Resolving hazard ID:", hazardId);
+
   // Remove marker from map
   if (mapMarkers[hazardId]) {
     map.removeLayer(mapMarkers[hazardId]);
@@ -249,7 +302,26 @@ window.resolveHazard = function (hazardId) {
   });
 
   saveHazards();
-  showToast("Hazard marked as resolved and removed from map.", "success");
+  showToast("Hazard resolved and removed from map.", "success");
+};
+
+// Function called to delete a hazard
+window.deleteHazard = function (hazardId) {
+  console.log("[RoadHazard] 🗑️ Deleting hazard ID:", hazardId);
+
+  // Remove marker from map
+  if (mapMarkers[hazardId]) {
+    map.removeLayer(mapMarkers[hazardId]);
+    delete mapMarkers[hazardId];
+  }
+
+  // Remove from hazards array
+  hazards = hazards.filter(function (h) {
+    return h.id !== hazardId;
+  });
+
+  saveHazards();
+  showToast("Hazard deleted from map and storage.", "success");
 };
 
 // =========================================================================
@@ -349,12 +421,16 @@ function onMapClick(e) {
 
 function openModal() {
   hazardForm.reset();
+  if (formError) formError.classList.add("hidden");
+  if (hazardDescInput) hazardDescInput.classList.remove("input-invalid");
   reportModal.classList.remove("hidden");
   hazardTypeSelect.focus();
 }
 
 function closeModal() {
   reportModal.classList.add("hidden");
+  if (formError) formError.classList.add("hidden");
+  if (hazardDescInput) hazardDescInput.classList.remove("input-invalid");
   pendingLocation = null;
 }
 
@@ -367,6 +443,16 @@ function handleFormSubmit(e) {
     return;
   }
 
+  var description = hazardDescInput ? hazardDescInput.value.trim() : "";
+  if (!description) {
+    if (formError) formError.classList.remove("hidden");
+    if (hazardDescInput) {
+      hazardDescInput.classList.add("input-invalid");
+      hazardDescInput.focus();
+    }
+    return;
+  }
+
   // Create new hazard report object
   var newHazard = {
     id: "hazard-" + Date.now(),
@@ -374,11 +460,12 @@ function handleFormSubmit(e) {
     lng: pendingLocation.lng,
     type: hazardTypeSelect.value,
     severity: hazardSeveritySelect.value,
-    description: hazardDescInput.value.trim(),
+    description: description,
     reportedAt: formatCurrentTime()
   };
 
   // Add to state and save
+  console.log("[RoadHazard] ➕ Adding new hazard report:", newHazard);
   hazards.push(newHazard);
   saveHazards();
 
@@ -458,6 +545,24 @@ modalCloseBtn.addEventListener("click", closeModal);
 modalCancelBtn.addEventListener("click", closeModal);
 hazardForm.addEventListener("submit", handleFormSubmit);
 
+// Clear form error when user begins typing description
+if (hazardDescInput) {
+  hazardDescInput.addEventListener("input", function () {
+    if (hazardDescInput.value.trim().length > 0) {
+      if (formError) formError.classList.add("hidden");
+      hazardDescInput.classList.remove("input-invalid");
+    }
+  });
+}
+
+// Toggle legend collapsed state
+if (legendToggleBtn && legendBody) {
+  legendToggleBtn.addEventListener("click", function () {
+    var isCollapsed = legendBody.classList.toggle("collapsed");
+    legendToggleBtn.innerHTML = isCollapsed ? "+" : "&minus;";
+  });
+}
+
 toastCloseBtn.addEventListener("click", function () {
   notificationToast.classList.add("hidden");
 });
@@ -479,6 +584,8 @@ document.addEventListener("keydown", function (e) {
 // =========================================================================
 // 12. RUN ON PAGE LOAD
 // =========================================================================
-window.addEventListener("DOMContentLoaded", function () {
+if (document.readyState === "loading") {
+  window.addEventListener("DOMContentLoaded", initMap);
+} else {
   initMap();
-});
+}

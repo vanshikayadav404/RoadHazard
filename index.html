@@ -55,6 +55,31 @@
       </button>
     </div>
 
+    <!-- Empty State Banner (Shown when no hazards exist) -->
+    <div id="emptyStateBanner" class="empty-state-banner hidden">
+      <span class="empty-icon">🎉</span>
+      <div class="empty-text">
+        <strong>All roads are clear!</strong>
+        <span>No hazards are currently reported. Click anywhere on the map to report one.</span>
+      </div>
+    </div>
+
+    <!-- Hazard Types & Colors Legend -->
+    <div id="mapLegend" class="map-legend">
+      <div class="legend-header">
+        <span class="legend-title">Hazard Legend</span>
+        <button type="button" id="legendToggleBtn" class="legend-toggle-btn" aria-label="Toggle legend" title="Toggle legend">&minus;</button>
+      </div>
+      <div id="legendBody" class="legend-body">
+        <div class="legend-item"><span class="legend-badge pin-pothole">🕳️</span><span>Pothole</span></div>
+        <div class="legend-item"><span class="legend-badge pin-waterlogging">🌊</span><span>Waterlogging</span></div>
+        <div class="legend-item"><span class="legend-badge pin-accident">💥</span><span>Accident</span></div>
+        <div class="legend-item"><span class="legend-badge pin-broken_signal">🚦</span><span>Broken Signal</span></div>
+        <div class="legend-item"><span class="legend-badge pin-debris">🚧</span><span>Road Debris</span></div>
+        <div class="legend-item"><span class="legend-badge pin-other">⚠️</span><span>Other Danger</span></div>
+      </div>
+    </div>
+
     <!-- Toast / Notification Alert Box for friendly messages -->
     <div id="notificationToast" class="notification-toast hidden">
       <span id="toastIcon" class="toast-icon">ℹ️</span>
@@ -71,7 +96,7 @@
         <button id="modalCloseBtn" class="btn-close" aria-label="Close modal">&times;</button>
       </div>
 
-      <form id="hazardForm" class="modal-body">
+      <form id="hazardForm" class="modal-body" novalidate>
         <div class="form-group">
           <label for="hazardType">Hazard Type *</label>
           <select id="hazardType" required>
@@ -94,12 +119,14 @@
         </div>
 
         <div class="form-group">
-          <label for="hazardDescription">Description / Landmark</label>
+          <label for="hazardDescription">Description / Landmark *</label>
           <textarea 
             id="hazardDescription" 
             rows="3" 
             placeholder="e.g. Deep pothole in the middle lane near metro pillar 142..."
+            required
           ></textarea>
+          <div id="formError" class="field-error hidden">Please enter a description or landmark for the hazard.</div>
         </div>
 
         <div class="coordinates-preview">

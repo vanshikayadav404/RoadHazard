@@ -361,6 +361,18 @@ html, body {
   min-height: 70px;
 }
 
+.field-error {
+  color: #f87171;
+  font-size: 0.8rem;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.input-invalid {
+  border-color: var(--accent-red) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3) !important;
+}
+
 .coordinates-preview {
   font-size: 0.8rem;
   color: var(--text-muted);
@@ -514,12 +526,18 @@ html, body {
   margin-bottom: 10px;
 }
 
+.popup-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .btn-resolve {
-  width: 100%;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid var(--accent-red);
-  color: #fca5a5;
-  padding: 6px 10px;
+  flex: 1;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid #10b981;
+  color: #6ee7b7;
+  padding: 7px 10px;
   border-radius: 6px;
   font-size: 0.78rem;
   font-weight: 600;
@@ -528,6 +546,24 @@ html, body {
 }
 
 .btn-resolve:hover {
+  background: #10b981;
+  color: #fff;
+}
+
+.btn-delete {
+  flex: 1;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid var(--accent-red);
+  color: #fca5a5;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-delete:hover {
   background: var(--accent-red);
   color: #fff;
 }
@@ -603,27 +639,159 @@ html, body {
 }
 
 /* =========================================================
+   EMPTY STATE BANNER (SHOWN WHEN 0 HAZARDS EXIST)
+   ========================================================= */
+.empty-state-banner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: rgba(22, 27, 34, 0.95);
+  border: 1px solid #10b981;
+  border-left: 4px solid #10b981;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  padding: 10px 18px;
+  border-radius: 8px;
+  max-width: 90%;
+  backdrop-filter: blur(4px);
+  pointer-events: auto;
+}
+
+.empty-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.empty-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.82rem;
+}
+
+.empty-text strong {
+  color: #34d399;
+  font-size: 0.88rem;
+}
+
+.empty-text span {
+  color: var(--text-secondary);
+}
+
+/* =========================================================
+   HAZARD LEGEND
+   ========================================================= */
+.map-legend {
+  position: absolute;
+  bottom: 24px;
+  left: 14px;
+  z-index: 999;
+  background-color: rgba(22, 27, 34, 0.95);
+  border: 1px solid var(--border-bright);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  font-size: 0.78rem;
+  overflow: hidden;
+  max-width: calc(100vw - 28px);
+}
+
+.legend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  background-color: rgba(13, 17, 23, 0.75);
+  border-bottom: 1px solid var(--border-subtle);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.legend-toggle-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.legend-toggle-btn:hover {
+  color: var(--text-primary);
+}
+
+.legend-body {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 12px;
+  padding: 8px 10px;
+}
+
+.legend-body.collapsed {
+  display: none;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.legend-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* =========================================================
    RESPONSIVE DESIGN (MOBILE & TABLET)
    ========================================================= */
 @media (max-width: 768px) {
   .app-header {
-    padding: 10px 14px;
+    padding: 8px 12px;
+  }
+
+  .header-content {
+    gap: 6px;
+  }
+
+  .brand-icon {
+    font-size: 1.5rem;
   }
 
   .brand-title {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
   }
 
   .brand-tagline {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
+    line-height: 1.2;
   }
 
   .hint-pill {
     display: none; /* Keep mobile header clean */
   }
 
-  .header-content {
-    gap: 8px;
+  .hazard-counter {
+    padding: 4px 10px;
+    font-size: 0.75rem;
   }
 
   .map-controls {
@@ -632,14 +800,46 @@ html, body {
   }
 
   .btn-locate {
+    padding: 7px 11px;
+    font-size: 0.78rem;
+  }
+
+  .empty-state-banner {
+    top: 8px;
+    width: 92%;
     padding: 8px 12px;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
+  }
+
+  .map-legend {
+    bottom: 20px;
+    left: 8px;
+    font-size: 0.72rem;
+  }
+
+  .legend-body {
+    grid-template-columns: 1fr;
+    gap: 4px;
+    padding: 6px 8px;
+  }
+
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-card {
+    max-width: 100%;
+  }
+
+  .modal-body {
+    padding: 14px;
+    gap: 12px;
   }
 
   .notification-toast {
     width: 92%;
     bottom: 16px;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     padding: 10px 14px;
   }
 }
